@@ -1,4 +1,4 @@
-import {HttpException, HttpStatus, Injectable} from '@nestjs/common';
+import {HttpException, HttpStatus, Injectable, UnauthorizedException} from '@nestjs/common';
 import {CreateUserDto} from "./dto/create-user.dto";
 import {InjectModel} from "@nestjs/sequelize";
 import {User} from "./models/user.model";
@@ -37,7 +37,6 @@ export class AuthService {
             process.env.SECRET_REFRESH_TOKEN,
             {expiresIn: process.env.REFRESH_TOKEN_EXPIRE}
         )
-        console.log('passed')
         await this.saveToken(new UserDto(payload), refreshToken);
         return {
             accessToken: accessToken,
@@ -56,17 +55,55 @@ export class AuthService {
         const userId = userDTO.id;
         return await this.tokenRepo.create({userId, refreshToken});
     }
+
     async login(dto: CreateUserDto){
         try{
+            const user = await this.userRepo.findOne({where : { email: dto.email}})
+            if(!user) {
+                throw new HttpException('User not found', HttpStatus.BAD_REQUEST)
+            }
+            const isPasswordCompare = await bcrypt.compare(dto.password, user.password);
+            if(!isPasswordCompare) {
+                throw new HttpException('invalid password', HttpStatus.BAD_REQUEST)
+            }
+            return await this.generateToken(user)
         }catch (e){
-
+            return e
         }
     }
-    async logout(){
-
+    async logout(refreshToken: string){
+        const token = await this.tokenRepo.destroy({where: {refreshToken : refreshToken}})
+        return {
+            message: 'user Log out'
+        }
     }
-    async refresh(){}
-    async activate(){}
+    async refresh(refreshToken){
+        if(!refreshToken){
+            throw new UnauthorizedException()
+        }
+        const userData = await this.validateRefreshToken(refreshToken);
+        const _refreshToken = await this.tokenRepo.findOne({where: {refreshToken: refreshToken}});
+        if(!userData || !_refreshToken){
+            throw new UnauthorizedException()
+        }
+        const userId = _refreshToken.userId;
+        const user = await this.userRepo.findOne({where: {userId : userId}})
+        return await this.generateToken(user);
+    }
+    private async validateRefreshToken(refreshToken){
+        try{
+            return await jwt.verify(refreshToken, process.env.SECRET_REFRESH_TOKEN);
+        }catch (e){
+            return null;
+        }
+    }
+     validateAccessToken(accessToken){
+        try{
+            return jwt.verify(accessToken, process.env.SECRET_ACCESS_TOKEN);
+        }catch (e){
+            return null;
+        }
+    }
     async getAll(){
         return this.userRepo.findAll();
     }
