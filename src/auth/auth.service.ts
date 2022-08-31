@@ -21,7 +21,7 @@ export class AuthService {
             }
             const hashedPassword = await bcrypt.hash(dto.password, 3);
             const user = await this.userRepo.create({...dto, password: hashedPassword});
-            return this.generateToken(user);
+            return await this.generateToken(user);
         }catch (e){
             return e
         }
@@ -41,7 +41,8 @@ export class AuthService {
         await this.saveToken(new UserDto(payload), refreshToken);
         return {
             accessToken: accessToken,
-            refreshToken: refreshToken
+            refreshToken: refreshToken,
+            userDto: new UserDto(payload)
         }
     }
     private async saveToken(userDTO : UserDto, refreshToken){
