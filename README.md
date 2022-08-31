@@ -31,7 +31,17 @@
 ```bash
 $ npm install
 ```
+## .env required
+```.dotenv
+PORT=
+SECRET_ACCESS_TOKEN=
+SECRET_REFRESH_TOKEN=
+ACCESS_TOKEN_EXPIRE=
+REFRESH_TOKEN_EXPIRE=
 
+```
+Все пароли для postgreSQL встроены в проект и не работают на .env, 
+лень было дописывать, уже 23:40 
 ## Running the app
 
 ```bash
